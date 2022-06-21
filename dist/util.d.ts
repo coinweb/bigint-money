@@ -16,7 +16,7 @@ export declare enum Round {
  * be used in the constructor of a Money object, and returns a BigInteger
  * with adjusted precision.
  */
-export declare function moneyValueToBigInt(input: Money | string | number | BigInteger, round: Round): BigInteger;
+export declare function moneyValueToBigInt(input: Money | string | number | bigint | BigInteger, round: Round): BigInteger;
 /**
  * This function takes a BigInteger that was multiplied by PRECISON_M, and returns
  * a human readable string value with a specified precision.

@@ -1,6 +1,6 @@
 import { UnsafeIntegerError } from './errors';
 import { Money } from './money';
-import bigInt, { BigInteger } from 'big-integer';
+import bigInt, { BigInteger, isInstance } from 'big-integer';
 
 // How many digits we support
 export const PRECISION_I = 20;
@@ -31,16 +31,20 @@ export enum Round {
  * be used in the constructor of a Money object, and returns a BigInteger
  * with adjusted precision.
  */
-export function moneyValueToBigInt(input: Money | string | number | BigInteger, round: Round): BigInteger {
+export function moneyValueToBigInt(input: Money | string | number | bigint | BigInteger, round: Round): BigInteger {
 
   if (input instanceof Money) {
     return input.toSource();
   }
 
+  if(isInstance(input)){
+    return input.multiply(PRECISION_M);
+  }
+
   switch (typeof input) {
     case 'string' : {
 
-      const parts = input.match(/^(-)?([0-9]*)?(\.([0-9]*))?$/);
+      const parts = (input as string).match(/^(-)?([0-9]*)?(\.([0-9]*))?$/);
 
       if (!parts) {
         throw new TypeError('Input string must follow the pattern (-)##.## or -##');
@@ -82,9 +86,11 @@ export function moneyValueToBigInt(input: Money | string | number | BigInteger, 
       if (!Number.isSafeInteger(input)) {
         throw new UnsafeIntegerError('The number ' + input + ' is not a "safe" integer. It must be converted before passing it');
       }
-      return bigInt(input).multiply(PRECISION_M);
+      return bigInt(input as number).multiply(PRECISION_M);
+    case 'bigint' :
+      return bigInt(input as bigint).multiply(PRECISION_M);
     default :
-      return bigInt(input).multiply(PRECISION_M);
+      throw new TypeError('value must be a safe integer, bigint or string');
 
   }
 
@@ -107,7 +113,7 @@ export function bigintToFixed(value: BigInteger, precision: number, round: Round
   const negative = value.isNegative();
   let remainder = value.mod(PRECISION_M);
 
-  if (bigInt(precision).compare(PRECISION)) {
+  if (bigInt(precision).compare(PRECISION) === 1) {
     // More precision was requested than we have, so we multiply
     // to add more 0's
     remainder = remainder.multiply( bigInt(10).pow(bigInt(precision).minus(PRECISION)));
@@ -116,7 +122,7 @@ export function bigintToFixed(value: BigInteger, precision: number, round: Round
     remainder = divide(remainder, bigInt(10).pow(bigInt(PRECISION).minus(precision)), round);
   }
 
-  if (remainder.isPositive()) { remainder = remainder.multiply(-1); }
+  if (remainder.isNegative()) { remainder = remainder.multiply(-1); }
 
   let remainderStr = remainder.toString().padStart(precision, '0');
 
@@ -147,14 +153,14 @@ export function bigintToFixed(value: BigInteger, precision: number, round: Round
 export function divide(a: BigInteger, b: BigInteger, round: Round): BigInteger {
 
   // Get absolute versions. We'll deal with the negatives later.
-  const aAbs = bigInt(a).isPositive() ? bigInt(a) : bigInt(-a);
-  const bAbs = bigInt(b).isPositive() ? bigInt(b) : bigInt(-b);
+  const aAbs = bigInt(a).abs();
+  const bAbs = bigInt(b).abs();
 
   let result = aAbs.divide(bAbs);
   const rem = aAbs.mod(bAbs);
 
   // if remainder > half divisor
-  if (rem.multiply(2).compare(bAbs)) {
+  if (rem.multiply(2).compare(bAbs) === 1) {
     switch (round) {
       case Round.TRUNCATE:
         // do nothing
@@ -171,7 +177,7 @@ export function divide(a: BigInteger, b: BigInteger, round: Round): BigInteger {
     switch (round) {
       case Round.HALF_TO_EVEN:
         // Add 1 if result is odd to get an even return value
-        if (result.mod(2).equals(1)) { result = result.plus(1); }
+        if (result.isOdd()) { result = result.plus(1); }
         break;
       case Round.HALF_AWAY_FROM_0:
         result = result.plus(1);
@@ -185,7 +191,7 @@ export function divide(a: BigInteger, b: BigInteger, round: Round): BigInteger {
 
   if (a.isPositive() !== b.isPositive()) {
     // Either a XOR b is negative
-    return bigInt(-result);
+    return bigInt(result).multiply(-1);
   } else {
     return result;
   }

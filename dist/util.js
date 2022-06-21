@@ -1,12 +1,32 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.divide = exports.bigintToFixed = exports.moneyValueToBigInt = exports.Round = exports.PRECISION_M = exports.PRECISION = exports.PRECISION_I = void 0;
 const errors_1 = require("./errors");
 const money_1 = require("./money");
-const big_integer_1 = __importDefault(require("big-integer"));
+const big_integer_1 = __importStar(require("big-integer"));
 // How many digits we support
 exports.PRECISION_I = 20;
 // BigInteger version. We keep both so there's less conversions.
@@ -33,6 +53,9 @@ var Round;
 function moneyValueToBigInt(input, round) {
     if (input instanceof money_1.Money) {
         return input.toSource();
+    }
+    if ((0, big_integer_1.isInstance)(input)) {
+        return input.multiply(exports.PRECISION_M);
     }
     switch (typeof input) {
         case 'string': {
@@ -75,8 +98,10 @@ function moneyValueToBigInt(input, round) {
                 throw new errors_1.UnsafeIntegerError('The number ' + input + ' is not a "safe" integer. It must be converted before passing it');
             }
             return (0, big_integer_1.default)(input).multiply(exports.PRECISION_M);
-        default:
+        case 'bigint':
             return (0, big_integer_1.default)(input).multiply(exports.PRECISION_M);
+        default:
+            throw new TypeError('value must be a safe integer, bigint or string');
     }
 }
 exports.moneyValueToBigInt = moneyValueToBigInt;
@@ -94,7 +119,7 @@ function bigintToFixed(value, precision, round) {
     let wholePart = value.divide(exports.PRECISION_M);
     const negative = value.isNegative();
     let remainder = value.mod(exports.PRECISION_M);
-    if ((0, big_integer_1.default)(precision).compare(exports.PRECISION)) {
+    if ((0, big_integer_1.default)(precision).compare(exports.PRECISION) === 1) {
         // More precision was requested than we have, so we multiply
         // to add more 0's
         remainder = remainder.multiply((0, big_integer_1.default)(10).pow((0, big_integer_1.default)(precision).minus(exports.PRECISION)));
@@ -103,7 +128,7 @@ function bigintToFixed(value, precision, round) {
         // Less precision was requested, so we round
         remainder = divide(remainder, (0, big_integer_1.default)(10).pow((0, big_integer_1.default)(exports.PRECISION).minus(precision)), round);
     }
-    if (remainder.isPositive()) {
+    if (remainder.isNegative()) {
         remainder = remainder.multiply(-1);
     }
     let remainderStr = remainder.toString().padStart(precision, '0');
@@ -131,12 +156,12 @@ exports.bigintToFixed = bigintToFixed;
  */
 function divide(a, b, round) {
     // Get absolute versions. We'll deal with the negatives later.
-    const aAbs = (0, big_integer_1.default)(a).isPositive() ? (0, big_integer_1.default)(a) : (0, big_integer_1.default)(-a);
-    const bAbs = (0, big_integer_1.default)(b).isPositive() ? (0, big_integer_1.default)(b) : (0, big_integer_1.default)(-b);
+    const aAbs = (0, big_integer_1.default)(a).abs();
+    const bAbs = (0, big_integer_1.default)(b).abs();
     let result = aAbs.divide(bAbs);
     const rem = aAbs.mod(bAbs);
     // if remainder > half divisor
-    if (rem.multiply(2).compare(bAbs)) {
+    if (rem.multiply(2).compare(bAbs) === 1) {
         switch (round) {
             case Round.TRUNCATE:
                 // do nothing
@@ -154,7 +179,7 @@ function divide(a, b, round) {
         switch (round) {
             case Round.HALF_TO_EVEN:
                 // Add 1 if result is odd to get an even return value
-                if (result.mod(2).equals(1)) {
+                if (result.isOdd()) {
                     result = result.plus(1);
                 }
                 break;
@@ -169,7 +194,7 @@ function divide(a, b, round) {
     }
     if (a.isPositive() !== b.isPositive()) {
         // Either a XOR b is negative
-        return (0, big_integer_1.default)(-result);
+        return (0, big_integer_1.default)(result).multiply(-1);
     }
     else {
         return result;
