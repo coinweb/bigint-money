@@ -1,8 +1,8 @@
 import { Money } from './money';
-import bigInt, { BigInteger } from 'big-integer';
+import BN from 'bn.js';
 export declare const PRECISION_I = 20;
-export declare const PRECISION: bigInt.BigInteger;
-export declare const PRECISION_M: bigInt.BigInteger;
+export declare const PRECISION: BN;
+export declare const PRECISION_M: BN;
 export declare enum Round {
     HALF_TO_EVEN = 1,
     BANKERS = 1,
@@ -16,14 +16,14 @@ export declare enum Round {
  * be used in the constructor of a Money object, and returns a BigInteger
  * with adjusted precision.
  */
-export declare function moneyValueToBigInt(input: Money | string | number | bigint | BigInteger, round: Round): BigInteger;
+export declare function moneyValueToBigInt(input: Money | string | number | BN, round: Round): BN;
 /**
  * This function takes a BigInteger that was multiplied by PRECISON_M, and returns
  * a human readable string value with a specified precision.
  *
  * Precision is the number of decimals that are returned.
  */
-export declare function bigintToFixed(value: BigInteger, precision: number, round: Round): string;
+export declare function bigintToFixed(value: BN, precision: number, round: Round): string;
 /**
  * This function takes 2 bigints and divides them.
  *
@@ -33,4 +33,4 @@ export declare function bigintToFixed(value: BigInteger, precision: number, roun
  * This function rounds to the nearest even number, also
  * known as 'bankers rounding'.
  */
-export declare function divide(a: BigInteger, b: BigInteger, round: Round): BigInteger;
+export declare function divide(a: BN, b: BN, round: Round): BN;

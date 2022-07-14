@@ -1,10 +1,10 @@
 import { Round } from './util';
-import { BigInteger } from 'big-integer';
+import BN from 'bn.js';
 export declare class Money {
     currency: string;
     private value;
     private round;
-    constructor(value: number | BigInteger | string, currency: string, round?: Round);
+    constructor(value: number | BN | string, currency: string, round?: Round);
     /**
      * Return a string representation of the money value.
      *
@@ -39,7 +39,7 @@ export declare class Money {
      *
      * pow currently only supports whole numbers.
      */
-    pow(exponent: number | BigInteger): Money;
+    pow(exponent: number | BN): Money;
     /**
      * Returns the absolute value.
      */
@@ -75,7 +75,7 @@ export declare class Money {
      * If this object is considered to be lower, -1 is returned.
      * If this object is considered to be higher, 1 is returned.
      */
-    compare(val: number | string | Money): number;
+    compare(val: number | string | Money): 0 | 1 | -1;
     /**
      * Allocate this value to different parts.
      *
@@ -98,14 +98,14 @@ export declare class Money {
      *
      * This is the current value of the object, multiplied by 10 ** 12.
      */
-    toSource(): BigInteger;
+    toSource(): BN;
     /**
      * A factory function to construct a Money object a 'source' value.
      *
      * The source value is just the underlying BigInteger used in the Money
      * class and can be obtained by calling Money.getSource().
      */
-    static fromSource(val: BigInteger, currency: string, round?: Round): Money;
+    static fromSource(val: BN, currency: string, round?: Round): Money;
     /**
      * A default output for serializing to JSON
      */

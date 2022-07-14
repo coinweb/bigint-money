@@ -6,12 +6,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Money = void 0;
 const errors_1 = require("./errors");
 const util_1 = require("./util");
-const big_integer_1 = __importDefault(require("big-integer"));
+const bn_js_1 = __importDefault(require("bn.js"));
 class Money {
     constructor(value, currency, round = util_1.Round.HALF_TO_EVEN) {
         this.currency = currency;
         this.round = round;
-        this.value = (0, util_1.moneyValueToBigInt)(value, this.round);
+        this.value = util_1.moneyValueToBigInt(value, this.round);
     }
     /**
      * Return a string representation of the money value.
@@ -22,13 +22,13 @@ class Money {
      * This function rounds to even, a.k.a. it uses bankers rounding.
      */
     toFixed(precision) {
-        return (0, util_1.bigintToFixed)(this.value, precision, this.round);
+        return util_1.bigintToFixed(this.value, precision, this.round);
     }
     add(val) {
         if (val instanceof Money && val.currency !== this.currency) {
             throw new errors_1.IncompatibleCurrencyError('You cannot add Money from different currencies. Convert first');
         }
-        const addVal = (0, util_1.moneyValueToBigInt)(val, this.round);
+        const addVal = util_1.moneyValueToBigInt(val, this.round);
         const r = Money.fromSource(addVal.add(this.value), this.currency, this.round);
         return r;
     }
@@ -36,8 +36,8 @@ class Money {
         if (val instanceof Money && val.currency !== this.currency) {
             throw new errors_1.IncompatibleCurrencyError('You cannot subtract Money from different currencies. Convert first');
         }
-        const subVal = (0, util_1.moneyValueToBigInt)(val, this.round);
-        return Money.fromSource(this.value.minus(subVal), this.currency, this.round);
+        const subVal = util_1.moneyValueToBigInt(val, this.round);
+        return Money.fromSource(this.value.sub(subVal), this.currency, this.round);
     }
     /**
      * Divide the current number with the specified number.
@@ -53,10 +53,10 @@ class Money {
         // again as otherwise we will lose precision.
         //
         // This means for an original of $1 this would now be $1 * 10**24.
-        const val1 = (0, util_1.moneyValueToBigInt)(this.value, this.round);
+        const val1 = util_1.moneyValueToBigInt(this.value, this.round);
         // Converting the dividor.
-        const val2 = (0, util_1.moneyValueToBigInt)(val, this.round);
-        return Money.fromSource((0, util_1.divide)(val1, val2, this.round), this.currency, this.round);
+        const val2 = util_1.moneyValueToBigInt(val, this.round);
+        return Money.fromSource(util_1.divide(val1, val2, this.round), this.currency, this.round);
     }
     /**
      * Multiply
@@ -66,10 +66,10 @@ class Money {
      * be used for the resulting object.
      */
     multiply(val) {
-        const valBig = (0, util_1.moneyValueToBigInt)(val, this.round);
+        const valBig = util_1.moneyValueToBigInt(val, this.round);
         // Converting the dividor.
-        const resultBig = valBig.multiply(this.value);
-        return Money.fromSource((0, util_1.divide)(resultBig, util_1.PRECISION_M, this.round), this.currency, this.round);
+        const resultBig = valBig.mul(this.value);
+        return Money.fromSource(util_1.divide(resultBig, util_1.PRECISION_M, this.round), this.currency, this.round);
     }
     /**
      * Pow returns the current value to it's exponent.
@@ -81,8 +81,8 @@ class Money {
             throw new Error('You can currently only use pow() with whole numbers');
         }
         if (exponent > 1) {
-            const resultBig = this.value.pow((0, big_integer_1.default)(exponent));
-            return Money.fromSource((0, util_1.divide)(resultBig, (0, big_integer_1.default)(util_1.PRECISION_M).pow((0, big_integer_1.default)(exponent).minus(1)), this.round), this.currency, this.round);
+            const resultBig = this.value.pow(new bn_js_1.default(exponent));
+            return Money.fromSource(util_1.divide(resultBig, new bn_js_1.default(util_1.PRECISION_M).pow(new bn_js_1.default(exponent).sub(new bn_js_1.default(1))), this.round), this.currency, this.round);
         }
         else if (exponent < 0) {
             return new Money(1, this.currency, this.round).divide(this.pow(-exponent));
@@ -147,8 +147,8 @@ class Money {
         if (val instanceof Money && val.currency !== this.currency) {
             throw new errors_1.IncompatibleCurrencyError('You cannot compare different currencies.');
         }
-        const bigVal = (0, util_1.moneyValueToBigInt)(val, this.round);
-        return this.value.compare(bigVal);
+        const bigVal = util_1.moneyValueToBigInt(val, this.round);
+        return this.value.cmp(bigVal);
     }
     /**
      * Allocate this value to different parts.
@@ -167,26 +167,26 @@ class Money {
      *
      */
     allocate(parts, precision) {
-        const bParts = (0, big_integer_1.default)(parts);
+        const bParts = new bn_js_1.default(parts);
         // Javascript will round to 0.
-        const fraction = this.value.divide(bParts);
+        const fraction = this.value.div(bParts);
         const remainder = this.value.mod(bParts);
         // This value is used for rounding to the desired precision
-        const precisionRounder = (0, big_integer_1.default)(10).pow(util_1.PRECISION.minus(precision));
-        const roundedFraction = fraction.divide(precisionRounder);
+        const precisionRounder = new bn_js_1.default(10).pow(util_1.PRECISION.sub(new bn_js_1.default(precision)));
+        const roundedFraction = fraction.div(precisionRounder);
         const roundedRemainder = fraction.mod(precisionRounder);
         // We had 2 division operators, and we want to keep remainders for both
         // of them.
-        const totalRoundedRemainder = ((roundedRemainder.add(remainder)).multiply(bParts)).divide(precisionRounder);
+        const totalRoundedRemainder = ((roundedRemainder.add(remainder)).mul(bParts)).div(precisionRounder);
         const result = Array(parts).fill(roundedFraction);
         // Figure out how many spare 'cents' we need to distribute. If the number
         // is negative, we need to spread debt instead.
-        const add = (0, big_integer_1.default)(totalRoundedRemainder.isPositive() ? 1 : -1);
+        const add = new bn_js_1.default(!totalRoundedRemainder.isNeg() ? 1 : -1);
         for (let i = 0; i < Math.abs(Number(totalRoundedRemainder)); i++) {
             result[i] = result[i].add(add);
         }
         return result.map(item => {
-            return Money.fromSource(item.multiply(precisionRounder), this.currency, this.round);
+            return Money.fromSource(item.mul(precisionRounder), this.currency, this.round);
         });
     }
     /**

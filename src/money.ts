@@ -8,15 +8,15 @@ import {
   PRECISION_M,
   Round,
 } from './util';
-import bigInt, { BigInteger } from 'big-integer';
+import BN from 'bn.js';
 
 export class Money {
 
   currency: string;
-  private value: BigInteger;
+  private value: BN;
   private round: Round;
 
-  constructor(value: number | BigInteger | string, currency: string, round: Round = Round.HALF_TO_EVEN) {
+  constructor(value: number | BN | string, currency: string, round: Round = Round.HALF_TO_EVEN) {
 
     this.currency = currency;
     this.round = round;
@@ -57,7 +57,7 @@ export class Money {
     }
 
     const subVal = moneyValueToBigInt(val, this.round);
-    return Money.fromSource(this.value.minus(subVal), this.currency, this.round);
+    return Money.fromSource(this.value.sub(subVal), this.currency, this.round);
 
   }
 
@@ -101,7 +101,7 @@ export class Money {
     const valBig = moneyValueToBigInt(val, this.round);
 
     // Converting the dividor.
-    const resultBig = valBig.multiply(this.value);
+    const resultBig = valBig.mul(this.value);
 
     return Money.fromSource(
       divide(resultBig, PRECISION_M, this.round),
@@ -116,16 +116,16 @@ export class Money {
    *
    * pow currently only supports whole numbers.
    */
-  pow(exponent: number | BigInteger): Money {
+  pow(exponent: number | BN): Money {
 
     if (typeof exponent === 'number' && !Number.isInteger(exponent)) {
       throw new Error('You can currently only use pow() with whole numbers');
     }
 
     if (exponent > 1) {
-      const resultBig = this.value.pow(bigInt(exponent as BigInteger));
+      const resultBig = this.value.pow(new BN(exponent as BN));
       return Money.fromSource(
-        divide(resultBig, bigInt(PRECISION_M).pow(bigInt(exponent as number).minus(1)), this.round),
+        divide(resultBig, new BN(PRECISION_M).pow(new BN(exponent as number).sub(new BN(1))), this.round),
         this.currency,
         this.round
       );
@@ -215,7 +215,7 @@ export class Money {
     }
 
     const bigVal = moneyValueToBigInt(val, this.round);
-    return this.value.compare(bigVal);
+    return this.value.cmp(bigVal);
   }
 
 
@@ -237,27 +237,27 @@ export class Money {
    */
   allocate(parts: number, precision: number): Money[] {
 
-    const bParts = bigInt(parts);
+    const bParts = new BN(parts);
 
     // Javascript will round to 0.
-    const fraction = this.value.divide(bParts);
+    const fraction = this.value.div(bParts);
     const remainder = this.value.mod(bParts);
 
     // This value is used for rounding to the desired precision
-    const precisionRounder = bigInt(10).pow(PRECISION.minus(precision));
+    const precisionRounder = new BN(10).pow(PRECISION.sub(new BN(precision)));
 
-    const roundedFraction = fraction.divide(precisionRounder);
+    const roundedFraction = fraction.div(precisionRounder);
     const roundedRemainder = fraction.mod(precisionRounder);
 
     // We had 2 division operators, and we want to keep remainders for both
     // of them.
-    const totalRoundedRemainder = ((roundedRemainder.add(remainder)).multiply(bParts)).divide(precisionRounder);
+    const totalRoundedRemainder = ((roundedRemainder.add(remainder)).mul(bParts)).div(precisionRounder);
 
-    const result: BigInteger[] = Array(parts).fill(roundedFraction);
+    const result: BN[] = Array(parts).fill(roundedFraction);
 
     // Figure out how many spare 'cents' we need to distribute. If the number
     // is negative, we need to spread debt instead.
-    const add = bigInt(totalRoundedRemainder.isPositive() ? 1 : -1);
+    const add = new BN(!totalRoundedRemainder.isNeg() ? 1 : -1);
 
     for (let i = 0; i < Math.abs(Number(totalRoundedRemainder)); i++) {
       result[i] = result[i].add(add);
@@ -266,7 +266,7 @@ export class Money {
     return result.map( item => {
 
       return Money.fromSource(
-        item.multiply(precisionRounder),
+        item.mul(precisionRounder),
         this.currency,
         this.round
       );
@@ -280,7 +280,7 @@ export class Money {
    *
    * This is the current value of the object, multiplied by 10 ** 12.
    */
-  toSource(): BigInteger {
+  toSource(): BN {
 
     return this.value;
 
@@ -292,7 +292,7 @@ export class Money {
    * The source value is just the underlying BigInteger used in the Money
    * class and can be obtained by calling Money.getSource().
    */
-  static fromSource(val: BigInteger, currency: string, round: Round = Round.HALF_TO_EVEN): Money {
+  static fromSource(val: BN, currency: string, round: Round = Round.HALF_TO_EVEN): Money {
 
     const m = new Money(0, currency, round);
     m.value = val;

@@ -1,7 +1,7 @@
 import { Money, UnsafeIntegerError, IncompatibleCurrencyError } from '../src';
 import { expect } from 'chai';
 import { PRECISION_I } from '../src/util';
-import bigInt from 'big-integer';
+import BN from 'bn.js';
 
 describe('Money class', () => {
 
@@ -391,7 +391,7 @@ describe('Money class', () => {
     it('should return the underlying source BigInteger value', () => {
 
       const m = new Money(1, 'USD');
-      expect(m.toSource()).to.equal(bigInt(1n).multiply(bigInt(10n).pow(bigInt(PRECISION_I))));
+      expect(m.toSource()).to.equal(new BN(1).mul(new BN(10).pow(new BN(PRECISION_I))));
 
     });
 
