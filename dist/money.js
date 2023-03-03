@@ -223,8 +223,8 @@ class Money {
     /**
      * This function will return a string with all irrelevant 0's removed.
      */
-    format() {
-        return this.toFixed(util_1.PRECISION_I).replace(/\.?0+$/, '');
+    format(precision = util_1.PRECISION_I) {
+        return this.toFixed(precision).replace(/\.?0+$/, '');
     }
 }
 exports.Money = Money;

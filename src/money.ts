@@ -322,9 +322,9 @@ export class Money {
   /**
    * This function will return a string with all irrelevant 0's removed.
    */
-  format(): string {
+  format(precision = PRECISION_I): string {
 
-    return this.toFixed(PRECISION_I).replace(/\.?0+$/, '');
+    return this.toFixed(precision).replace(/\.?0+$/, '');
 
   }
 

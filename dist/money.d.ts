@@ -113,5 +113,5 @@ export declare class Money {
     /**
      * This function will return a string with all irrelevant 0's removed.
      */
-    format(): string;
+    format(precision?: number): string;
 }
