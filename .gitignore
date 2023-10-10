@@ -2,5 +2,4 @@
 /.nyc_output
 .*.swp
 
-dist/
 browser/

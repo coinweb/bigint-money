@@ -1,3 +1,4 @@
+import bigInt from 'big-integer';
 import { expect } from 'chai';
 import { divide, Round } from '../src/util';
 
@@ -23,8 +24,8 @@ describe('divide', () => {
       it(`${test[0]} / ${test[1]} = ${test[2]}`, () => {
 
         expect(
-          divide(test[0], test[1], Round.HALF_TO_EVEN),
-        ).to.equal(test[2]);
+          divide(bigInt(test[0]), bigInt(test[1]), Round.HALF_TO_EVEN),
+        ).to.equal(bigInt(test[2]));
 
       });
 
@@ -52,8 +53,8 @@ describe('divide', () => {
       it(`${test[0]} / ${test[1]} = ${test[2]}`, () => {
 
         expect(
-          divide(test[0], test[1], Round.HALF_AWAY_FROM_0),
-        ).to.equal(test[2]);
+          divide(bigInt(test[0]), bigInt(test[1]), Round.HALF_AWAY_FROM_0),
+        ).to.equal(bigInt(test[2]));
 
       });
 
@@ -81,8 +82,8 @@ describe('divide', () => {
       it(`${test[0]} / ${test[1]} = ${test[2]}`, () => {
 
         expect(
-          divide(test[0], test[1], Round.HALF_TOWARDS_0),
-        ).to.equal(test[2]);
+          divide(bigInt(test[0]), bigInt(test[1]), Round.HALF_TOWARDS_0),
+        ).to.equal(bigInt(test[2]));
 
       });
 
@@ -111,8 +112,8 @@ describe('divide', () => {
       it(`${test[0]} / ${test[1]} = ${test[2]}`, () => {
 
         expect(
-          divide(test[0], test[1], Round.TRUNCATE),
-        ).to.equal(test[2]);
+          divide(bigInt(test[0]), bigInt(test[1]), Round.TRUNCATE),
+        ).to.equal(bigInt(test[2]));
 
       });
 

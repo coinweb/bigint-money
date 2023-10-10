@@ -8,14 +8,15 @@ import {
   PRECISION_M,
   Round,
 } from './util';
+import bigInt, { BigInteger } from 'big-integer';
 
 export class Money {
 
   currency: string;
-  private value: bigint;
+  private value: BigInteger;
   private round: Round;
 
-  constructor(value: number | bigint | string, currency: string, round: Round = Round.HALF_TO_EVEN) {
+  constructor(value: number | BigInteger | string, currency: string, round: Round = Round.HALF_TO_EVEN) {
 
     this.currency = currency;
     this.round = round;
@@ -44,7 +45,7 @@ export class Money {
     }
 
     const addVal = moneyValueToBigInt(val, this.round);
-    const r = Money.fromSource(addVal + this.value, this.currency, this.round);
+    const r = Money.fromSource(addVal.add(this.value), this.currency, this.round);
     return r;
 
   }
@@ -56,7 +57,7 @@ export class Money {
     }
 
     const subVal = moneyValueToBigInt(val, this.round);
-    return Money.fromSource(this.value - subVal, this.currency, this.round);
+    return Money.fromSource(this.value.minus(subVal), this.currency, this.round);
 
   }
 
@@ -71,7 +72,7 @@ export class Money {
    */
   divide(val: number | string | Money): Money {
 
-    // Even though val1 was already in 'bigint' format, we run this
+    // Even though val1 was already in 'BigInteger' format, we run this
     // again as otherwise we will lose precision.
     //
     // This means for an original of $1 this would now be $1 * 10**24.
@@ -100,7 +101,7 @@ export class Money {
     const valBig = moneyValueToBigInt(val, this.round);
 
     // Converting the dividor.
-    const resultBig = valBig * this.value;
+    const resultBig = valBig.multiply(this.value);
 
     return Money.fromSource(
       divide(resultBig, PRECISION_M, this.round),
@@ -115,16 +116,16 @@ export class Money {
    *
    * pow currently only supports whole numbers.
    */
-  pow(exponent: number | bigint): Money {
+  pow(exponent: number | BigInteger): Money {
 
     if (typeof exponent === 'number' && !Number.isInteger(exponent)) {
       throw new Error('You can currently only use pow() with whole numbers');
     }
 
     if (exponent > 1) {
-      const resultBig = this.value ** BigInt(exponent);
+      const resultBig = this.value.pow(bigInt(exponent as BigInteger));
       return Money.fromSource(
-        divide(resultBig, PRECISION_M ** (BigInt(exponent)-1n), this.round),
+        divide(resultBig, bigInt(PRECISION_M).pow(bigInt(exponent as number).minus(1)), this.round),
         this.currency,
         this.round
       );
@@ -207,16 +208,14 @@ export class Money {
    * If this object is considered to be lower, -1 is returned.
    * If this object is considered to be higher, 1 is returned.
    */
-  compare(val: number | string | Money): -1 | 0 | 1 {
+  compare(val: number | string | Money){
 
     if (val instanceof Money && val.currency !== this.currency) {
       throw new IncompatibleCurrencyError('You cannot compare different currencies.');
     }
 
     const bigVal = moneyValueToBigInt(val, this.round);
-    if (bigVal === this.value) { return 0; }
-    return this.value < bigVal ? -1 : 1;
-
+    return this.value.compare(bigVal);
   }
 
 
@@ -238,36 +237,36 @@ export class Money {
    */
   allocate(parts: number, precision: number): Money[] {
 
-    const bParts = BigInt(parts);
+    const bParts = bigInt(parts);
 
     // Javascript will round to 0.
-    const fraction = this.value / bParts;
-    const remainder = this.value % bParts;
+    const fraction = this.value.divide(bParts);
+    const remainder = this.value.mod(bParts);
 
     // This value is used for rounding to the desired precision
-    const precisionRounder = BigInt(10) ** (PRECISION - BigInt(precision));
+    const precisionRounder = bigInt(10).pow(PRECISION.minus(precision));
 
-    const roundedFraction = (fraction / precisionRounder);
-    const roundedRemainder = fraction % precisionRounder;
+    const roundedFraction = fraction.divide(precisionRounder);
+    const roundedRemainder = fraction.mod(precisionRounder);
 
     // We had 2 division operators, and we want to keep remainders for both
     // of them.
-    const totalRoundedRemainder = ((roundedRemainder + remainder) * bParts) / precisionRounder;
+    const totalRoundedRemainder = ((roundedRemainder.add(remainder)).multiply(bParts)).divide(precisionRounder);
 
-    const result: bigint[] = Array(parts).fill(roundedFraction);
+    const result: BigInteger[] = Array(parts).fill(roundedFraction);
 
     // Figure out how many spare 'cents' we need to distribute. If the number
     // is negative, we need to spread debt instead.
-    const add = BigInt(totalRoundedRemainder > 0 ? 1 : -1);
+    const add = bigInt(totalRoundedRemainder.isPositive() ? 1 : -1);
 
     for (let i = 0; i < Math.abs(Number(totalRoundedRemainder)); i++) {
-      result[i] += add;
+      result[i] = result[i].add(add);
     }
 
     return result.map( item => {
 
       return Money.fromSource(
-        item * precisionRounder,
+        item.multiply(precisionRounder),
         this.currency,
         this.round
       );
@@ -277,11 +276,11 @@ export class Money {
   }
 
   /**
-   * Returns the underlying bigint value.
+   * Returns the underlying BigInteger value.
    *
    * This is the current value of the object, multiplied by 10 ** 12.
    */
-  toSource(): bigint {
+  toSource(): BigInteger {
 
     return this.value;
 
@@ -290,10 +289,10 @@ export class Money {
   /**
    * A factory function to construct a Money object a 'source' value.
    *
-   * The source value is just the underlying bigint used in the Money
+   * The source value is just the underlying BigInteger used in the Money
    * class and can be obtained by calling Money.getSource().
    */
-  static fromSource(val: bigint, currency: string, round: Round = Round.HALF_TO_EVEN): Money {
+  static fromSource(val: BigInteger, currency: string, round: Round = Round.HALF_TO_EVEN): Money {
 
     const m = new Money(0, currency, round);
     m.value = val;
@@ -323,9 +322,9 @@ export class Money {
   /**
    * This function will return a string with all irrelevant 0's removed.
    */
-  format(): string {
+  format(precision = PRECISION_I): string {
 
-    return this.toFixed(PRECISION_I).replace(/\.?0+$/, '');
+    return this.toFixed(precision).replace(/\.?0+$/, '');
 
   }
 

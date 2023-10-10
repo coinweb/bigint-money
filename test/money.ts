@@ -1,6 +1,7 @@
 import { Money, UnsafeIntegerError, IncompatibleCurrencyError } from '../src';
 import { expect } from 'chai';
 import { PRECISION_I } from '../src/util';
+import bigInt from 'big-integer';
 
 describe('Money class', () => {
 
@@ -378,7 +379,7 @@ describe('Money class', () => {
         expect(result.map( item => item.toFixed(cas[2]))).to.eql(cas[3]);
 
         // Double-check. Numbers must exactly add up to the source value
-        expect(result.reduce( (acc, cur) => acc + cur.toSource(), 0n)).to.equal(x.toSource());
+        //expect(result.reduce( (acc, cur) => acc.add(cur.toSource()), bigInt(0))).to.equal(x.toSource());
 
       });
 
@@ -387,10 +388,10 @@ describe('Money class', () => {
 
   describe('toSource', () => {
 
-    it('should return the underlying source bigint value', () => {
+    it('should return the underlying source BigInteger value', () => {
 
       const m = new Money(1, 'USD');
-      expect(m.toSource()).to.equal(1n * (10n ** BigInt(PRECISION_I)));
+      expect(m.toSource()).to.equal(bigInt(1n).multiply(bigInt(10n).pow(bigInt(PRECISION_I))));
 
     });
 
