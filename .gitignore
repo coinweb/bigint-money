@@ -3,3 +3,11 @@
 .*.swp
 
 browser/
+
+
+
+.yarn/cache
+.yarn/install-state.gz
+
+.env
+.env.npm
